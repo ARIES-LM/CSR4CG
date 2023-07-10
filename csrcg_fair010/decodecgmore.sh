@@ -11,8 +11,6 @@ modelname=${1}
 
 ckps=($(find $RUN/checkpoints/${modelname} -name "*best*.pt"))
 
-#ckps=($(find $RUN/checkpoints/${modelname} -name "*last*.pt"))
-
 for ckp in ${ckps[@]}
 do
 GEN=$ckp.cgtest.out

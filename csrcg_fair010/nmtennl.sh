@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RUN=/apdcephfs_cq2/share_47076/yongjingyin/fairseq-0.10multi
+RUN=./
 export PYTHONPATH=$RUN
 export PYTHONIOENCODING=utf8
 export OMP_NUM_THREADS=1
@@ -8,8 +8,7 @@ export OMP_NUM_THREADS=1
 scale=tiny
 # or small
 
-DATA="/apdcephfs_cq2/share_47076/yongjingyin/entudata/${scale}v2bin"
-
+DATA="entudata/${scale}bin"
 
 if [ $scale == tiny ]; then
     valid_step=1000
@@ -17,23 +16,24 @@ if [ $scale == tiny ]; then
     gpu="0,1,2,3"
     bz=4096
     NUM_GPU=4
+    jslamb=3.0
+    tau=0.1
+    classvar=1.0
 elif [ $scale == small ]; then
     valid_step=2000
     total_step=500000
     gpu="0,1,2,3"
     bz=8192
     NUM_GPU=4
+    jslamb=1.0
+    tau=0.07
+    classvar=0.25
 fi
 
-# 0.07 or 0.1
-tau=0.1
-jslamb=3.0
-
-modelname=ennl${scale}dp${dp}cregtokenjs${jslamb}cl${side}${classvar}tau${tau}warm${clwarm}
+modelname=ennl${scale}
 
 MODEL="$RUN/checkpoints/${modelname}"
 
-echo "Start training..."
 mkdir -p $MODEL
 
 CUDA_VISIBLE_DEVICES=$gpu python -m torch.distributed.launch --master_port $RANDOM --nproc_per_node ${NUM_GPU} $RUN/fairseq_cli/train.py $DATA \
@@ -41,8 +41,8 @@ CUDA_VISIBLE_DEVICES=$gpu python -m torch.distributed.launch --master_port $RAND
         --max-source-positions 128 \
         --seed 1 \
         --clnspecial 5 \
-        --var js --jslamb 3.0 --augnum4ce 2 --augnum 2 \
-        --clgather 0 --classvar 1.0 --classvar_side tgt --intvcl 0.1 \
+        --var js --jslamb $jslamb --augnum4ce 2 --augnum 2 \
+        --clgather 0 --classvar $classvar --classvar_side tgt --intvcl $tau \
         --clwarm 4000 --cldim 128 \
         --patience 10 --no-epoch-checkpoints \
         --task translation --arch transformer_intv_wmt_en_de \
@@ -68,6 +68,4 @@ CUDA_VISIBLE_DEVICES=0 python $RUN/fairseq_cli/generate.py $DATA \
         --path $MODEL/$test_model \
         --max-len-a 1 --max-len-b 50 \
         --batch-size 128 --beam 5 --remove-bpe --lenpen 0.6 >>${MODEL}/test-$test_model.log 2>&1
-
-# todo sacrebleu
 

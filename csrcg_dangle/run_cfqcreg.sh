@@ -1,9 +1,6 @@
 #!/bin/bash
 
-#source ~/.bashrc
-#conda activate dangle
-
-RUN=/apdcephfs_cq2/share_47076/yongjingyin/Dangle
+RUN=./
 
 export PYTHONPATH=$RUN/fairseq
 export PYTHONIOENCODING=utf8
@@ -16,18 +13,14 @@ SPLIT=${1:-mcd1}
 
 DATA=${DATADIR}/mcd_data/cfq-${SPLIT}-fairseq
 
-# checkpoints_utils,py load_model_ensemble_and_task, strict -> False
-#	--eval-accuracy-print-samples \
-
 #rm apply_bert_init
 
 gpu=${2:-0}
-SEED=${3:-1}
+SEED=42
+#SEED=1
+#SEED=3
 
-classvar=0.3
-jslamb=1.0
-
-modelname=rot${SPLIT}abasd${SEED}rd${jslamb}clsrc${classvar}
+modelname=${SPLIT}
 
 WORKDIR=$RUN/checkpoints/$modelname
 mkdir -p $WORKDIR
@@ -39,9 +32,8 @@ CUDA_VISIBLE_DEVICES=$gpu python3 -u $RUN/fairseq/fairseq_cli/train.py $DATA \
 --task semantic_parsing \
 --arch transformer_creg_roberta \
 --criterion cross_entropy_creg \
---clnspecial 0 --cltanh 0 \
---var js --jslamb $jslamb --augnum4ce 1 --augnum 2 --validvar 0 \
---classvar $classvar --classvar_side src --intvcl 0.07 \
+--var js --jslamb 1.0 --augnum4ce 1 --augnum 2 --validvar 0 \
+--classvar 0.3 --classvar_side src --intvcl 0.07 \
 --clwarm 4000 --cldim 128 \
 --dataset-impl raw \
 --optimizer adam --clip-norm 1.0 \
